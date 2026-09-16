@@ -1,9 +1,0 @@
-node_modules
-dist
-*.tsbuildinfo
-.env
-
-# Firebase Admin service account — private key, never commit
-*firebase-adminsdk*.json
-*.pem
-*.key

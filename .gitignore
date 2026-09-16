@@ -2,6 +2,9 @@
 .DS_Store
 ._*
 
+# Backend lives in its own repo now
+backend/
+
 # Internal docs — not pushed to the remote
 /*.docx
 /*.pdf
