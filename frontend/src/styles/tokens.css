@@ -1,0 +1,62 @@
+/**
+ * Briqbi design tokens — read off intranet.briqbi.com on 8 September 2026.
+ * Values are eyeballed from screenshots, not sampled from live CSS; correct
+ * them here if/when the real computed styles are available.
+ */
+:root {
+  /* dark chrome — header, hero, footer */
+  --ink-950: #0a0c10;
+  --ink-900: #14171d;
+  --ink-800: #1e222b;
+  --hair-dark: rgba(255, 255, 255, 0.1);
+  --on-dark: #f5f6f8;
+  --on-dark-muted: #93979f;
+  --on-dark-faint: #5b5f69;
+
+  /* light content surface */
+  --paper: #f5f6f8;
+  --paper-card: #ffffff;
+  --paper-border: #e7e9ed;
+  --ink: #14171d;
+  --ink-muted: #82868f;
+
+  /* accent */
+  --accent: #f2602e;
+  --accent-hover: #d9501f;
+  --on-accent: #ffffff;
+
+  /* identity gradient */
+  --violet-a: #8b5cf6;
+  --violet-b: #a855f7;
+
+  /* module accents — one per nav group */
+  --blue-bg: #e8effe;
+  --blue-fg: #3d6fe5;
+  --green-bg: #e1f6ea;
+  --green-fg: #1e9e63;
+  --purple-bg: #f5e9fe;
+  --purple-fg: #b14fd6;
+  --orange-bg: #ffeee1;
+  --orange-fg: #e27a2e;
+  --teal-bg: #e0f6f3;
+  --teal-fg: #159485;
+
+  /* semantic status — Done / Attention / Failed, per briqbi-hr-design-system.md §1 */
+  --danger-bg: #fdeae7;
+  --danger-fg: #c13a2a;
+  --success-bg: var(--green-bg);
+  --success-fg: var(--green-fg);
+  --warning-bg: var(--orange-bg);
+  --warning-fg: var(--orange-fg);
+
+  /* shape */
+  --r-chip: 8px;
+  --r-badge: 14px;
+  --r-card: 20px;
+  --r-pill: 999px;
+
+  /* type — Sora + Manrope only, no third face (see §2: record IDs use
+     tabular Manrope, not a monospace font) */
+  --font-display: 'Sora', system-ui, sans-serif;
+  --font-body: 'Manrope', system-ui, sans-serif;
+}

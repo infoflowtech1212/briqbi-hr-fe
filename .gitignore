@@ -1,0 +1,21 @@
+# macOS
+.DS_Store
+._*
+
+# Internal docs — not pushed to the remote
+/*.docx
+/*.pdf
+/*.md
+!/README.md
+
+# Editor
+.vscode/*
+!.vscode/extensions.json
+.idea
+
+# Safety net (real rules live in backend/.gitignore and frontend/.gitignore)
+.env
+.env.local
+*firebase-adminsdk*.json
+*.pem
+*.key
