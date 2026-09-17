@@ -1,7 +1,6 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { FORM_FIELDS } from '@shared/forms'
-import { submitApplication } from '../lib/mockApi'
-import { fetchJobOpenings, type JobOpening } from '../lib/api'
+import { createCandidate, fetchJobOpenings, type JobOpening } from '../lib/api'
 import { TopBar, SiteFooter } from '../components/Chrome'
 import { Field, type FieldValue } from '../components/Field'
 import { Badge } from '../components/ui'
@@ -34,22 +33,21 @@ export default function ApplyPage() {
       return
     }
     setPending(true)
-    await submitApplication({
-      fullName: String(values.fullName),
-      email: String(values.email),
-      phone: String(values.phone),
-      jobOpeningId,
-      linkedin: values.linkedin ? String(values.linkedin) : undefined,
-      location: values.location ? String(values.location) : undefined,
-      experienceYears: values.experienceYears === undefined ? undefined : Number(values.experienceYears),
-      currentPay: values.currentPay === undefined ? undefined : Number(values.currentPay),
-      expectedPay: values.expectedPay === undefined ? undefined : Number(values.expectedPay),
-      noticePeriod: values.noticePeriod ? String(values.noticePeriod) : undefined,
-      source: values.source === undefined ? undefined : Number(values.source),
-      cvFileName: cvName ?? undefined,
-    })
+    try {
+      await createCandidate({
+        fullName: String(values.fullName),
+        email: String(values.email),
+        phone: String(values.phone),
+        jobOpeningId,
+        linkedinUrl: values.linkedinUrl ? String(values.linkedinUrl) : undefined,
+        experienceYears: values.experienceYears === undefined ? undefined : Number(values.experienceYears),
+        resumeFileName: cvName ?? undefined,
+      })
+      setDone(true)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to submit application.')
+    }
     setPending(false)
-    setDone(true)
   }
 
   return (
@@ -61,10 +59,7 @@ export default function ApplyPage() {
           <h1>
             Apply to join <span className="accent">us.</span>
           </h1>
-          <p className="lede">
-            Eight people, Power Platform work, no account required to apply. Fill in what you can — a CV and a way to
-            reach you is the minimum.
-          </p>
+          <p className="lede">No account required to apply. Fill in what you can — a CV and a way to reach you is the minimum.</p>
         </div>
       </section>
 

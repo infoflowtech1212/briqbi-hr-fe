@@ -31,3 +31,10 @@ export const checkOutcomeTone = build([1], [0], [2, 3])
 export function toneLabel(set: Choice[], value: number, tone: (v: number) => Tone) {
   return { label: choiceLabel(set, value), tone: tone(value) }
 }
+
+/** Real intranet job-application status (string, not a Dataverse choice). */
+export function applicationStatusTone(status: string): Tone {
+  if (status === 'hired') return 'green'
+  if (status === 'rejected') return 'danger'
+  return 'orange' // applied, reviewing, shortlisted
+}

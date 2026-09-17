@@ -4,10 +4,10 @@ import {
   listAllBackgroundChecks,
   listAllDocuments,
   listAllJobOpenings,
-  listAllJoiningTasks,
   listCandidates,
   listTeamMembers,
 } from '../../lib/mockApi'
+import { fetchJoiningTasks } from '../../lib/api'
 import { PageHeader, StatRow } from '../../components/ui'
 
 interface Attention {
@@ -27,7 +27,7 @@ export default function OverviewPage() {
       listCandidates(),
       listAllBackgroundChecks(),
       listAllDocuments(),
-      listAllJoiningTasks(),
+      fetchJoiningTasks(),
       listAllAssets(),
     ]).then(([members, openings, candidates, checks, docs, tasks, assets]) => {
       setCore({

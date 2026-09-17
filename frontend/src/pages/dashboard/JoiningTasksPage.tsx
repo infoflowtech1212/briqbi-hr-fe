@@ -15,8 +15,6 @@ import { DataTable, type Column } from '../../components/DataTable'
 import { Modal } from '../../components/Modal'
 import { CloseIcon } from '../../components/icons'
 
-type Row = JoiningTask & { memberName: string }
-
 export default function JoiningTasksPage() {
   const [tasks, setTasks] = useState<JoiningTask[] | null>(null)
   const [members, setMembers] = useState<TeamMember[]>([])
@@ -36,18 +34,12 @@ export default function JoiningTasksPage() {
 
   useEffect(reload, [])
 
-  function memberName(id: string): string {
-    return members.find((m) => m.id === id)?.fullName ?? 'Unknown'
-  }
-
-  const rows: Row[] | null = tasks && tasks.map((t) => ({ ...t, memberName: memberName(t.teamMemberId) }))
-
-  const columns: Column<Row>[] = [
-    { key: 'member', label: 'Person', render: (r) => r.memberName },
+  const columns: Column<JoiningTask>[] = [
+    { key: 'member', label: 'Person', render: (r) => r.memberName ?? 'Unknown' },
     { key: 'stage', label: 'Stage', render: (r) => choiceLabel(ONBOARDING_STAGE, r.stage) },
     { key: 'mustDo', label: 'Must do?', render: (r) => (r.mustDo ? 'Yes' : 'No') },
     { key: 'responsible', label: 'Owner', render: (r) => r.responsible },
-    { key: 'due', label: 'Due', render: (r) => r.dueDate ?? '—' },
+    { key: 'due', label: 'Due', render: (r) => (r.dueDate ? new Date(r.dueDate).toLocaleDateString() : '—') },
     {
       key: 'status',
       label: 'Status',
@@ -84,7 +76,7 @@ export default function JoiningTasksPage() {
           </button>
         }
       />
-      {error ? <p className="error">{error}</p> : <DataTable columns={columns} rows={rows} emptyText="No joining tasks yet." />}
+      {error ? <p className="error">{error}</p> : <DataTable columns={columns} rows={tasks} emptyText="No joining tasks yet." />}
 
       {showAdd && (
         <JoiningTaskFormModal
@@ -159,8 +151,8 @@ function JoiningTaskFormModal({
   const [mustDo, setMustDo] = useState(task?.mustDo ?? true)
   const [responsible, setResponsible] = useState(task?.responsible ?? '')
   const [sequence, setSequence] = useState(task ? String(task.sequence) : '1')
-  const [dueDate, setDueDate] = useState(task?.dueDate ?? '')
-  const [completedDate, setCompletedDate] = useState(task?.completedDate ?? '')
+  const [dueDate, setDueDate] = useState(task?.dueDate ? task.dueDate.slice(0, 10) : '')
+  const [completedDate, setCompletedDate] = useState(task?.completedDate ? task.completedDate.slice(0, 10) : '')
   const [pending, setPending] = useState(false)
   const [error, setError] = useState<string | null>(null)
 

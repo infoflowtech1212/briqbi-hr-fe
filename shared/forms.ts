@@ -4,11 +4,7 @@
  * `backend/` (validation, once it exists) import from.
  */
 import type { Choice } from './optionSets'
-import {
-  APPLICATION_SOURCE,
-  RECOMMENDATION,
-  SIGNATURE_METHOD,
-} from './optionSets'
+import { RECOMMENDATION, SIGNATURE_METHOD } from './optionSets'
 
 export type FormKey =
   | 'apply'
@@ -216,17 +212,15 @@ function validatePan(raw: string): string | undefined {
  * flat fields, so they render through dedicated components instead.
  */
 export const FORM_FIELDS: Partial<Record<FormKey, FieldDef[]>> = {
+  // Matches what the real intranet's job-applications API actually collects
+  // (see backend/src/models/Candidate.ts) — no location/pay/notice period/
+  // source, those aren't part of the real shape.
   apply: [
     { name: 'fullName', label: 'Full Name', type: 'text', required: true },
     { name: 'email', label: 'Email', type: 'email', required: true },
     { name: 'phone', label: 'Phone', type: 'tel', required: true },
-    { name: 'linkedin', label: 'LinkedIn or Portfolio', type: 'text' },
-    { name: 'location', label: 'Where They Live', type: 'text' },
+    { name: 'linkedinUrl', label: 'LinkedIn or Portfolio', type: 'text' },
     { name: 'experienceYears', label: 'Years of Experience', type: 'number' },
-    { name: 'currentPay', label: 'Current Pay', type: 'currency' },
-    { name: 'expectedPay', label: 'Expected Pay', type: 'currency' },
-    { name: 'noticePeriod', label: 'Notice Period', type: 'text' },
-    { name: 'source', label: 'Came From', type: 'select', options: APPLICATION_SOURCE },
   ],
   joiner: [
     {

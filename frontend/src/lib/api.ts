@@ -245,6 +245,7 @@ export async function deleteTrainingRecord(id: string): Promise<void> {
 export interface JoiningTask {
   id: string
   teamMemberId: string
+  memberName?: string
   stage: number
   status: number
   mustDo: boolean
@@ -314,4 +315,227 @@ export async function deleteJoiningTask(id: string): Promise<void> {
   if (res.ok) return
   const body = await res.json().catch(() => null)
   throw new Error(body?.error ?? `Failed to delete joining task (${res.status})`)
+}
+
+/** Status values as returned by the real intranet's job-applications API — a string enum, not a numeric Dataverse choice. */
+export const APPLICATION_STATUSES = ['applied', 'reviewing', 'shortlisted', 'rejected', 'hired'] as const
+export type ApplicationStatus = (typeof APPLICATION_STATUSES)[number]
+
+export interface Candidate {
+  id: string
+  externalId?: string
+  fullName: string
+  email: string
+  phone: string
+  jobOpeningId: string
+  jobTitle: string
+  linkedinUrl?: string
+  experienceYears?: number
+  resumeKey?: string
+  resumeFileName?: string
+  status: ApplicationStatus
+  appliedAt?: string
+}
+
+interface RawCandidate extends Omit<Candidate, 'id' | 'jobTitle'> {
+  _id: string
+  jobTitle?: string
+}
+
+export async function fetchCandidates(): Promise<Candidate[]> {
+  const res = await fetch('/api/candidates')
+  if (!res.ok) throw new Error(`Failed to load candidates (${res.status})`)
+  const body = (await res.json()) as { data: RawCandidate[] }
+  return body.data.map(({ _id, jobTitle, ...rest }) => ({ id: _id, jobTitle: jobTitle ?? 'Unknown', ...rest }))
+}
+
+export interface CreateCandidateInput {
+  fullName: string
+  email: string
+  phone: string
+  jobOpeningId: string
+  linkedinUrl?: string
+  experienceYears?: number
+  resumeFileName?: string
+}
+
+export async function createCandidate(input: CreateCandidateInput): Promise<Candidate> {
+  const res = await fetch('/api/candidates', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(input),
+  })
+  const body = await res.json().catch(() => null)
+  if (!res.ok) throw new Error(body?.error ?? `Failed to submit application (${res.status})`)
+  const { _id, ...rest } = body as RawCandidate
+  return { id: _id, ...rest, jobTitle: '' }
+}
+
+export async function updateCandidateStatus(id: string, status: ApplicationStatus): Promise<void> {
+  const res = await fetch(`/api/candidates/${id}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ status }),
+  })
+  if (!res.ok) {
+    const body = await res.json().catch(() => null)
+    throw new Error(body?.error ?? `Failed to update candidate (${res.status})`)
+  }
+}
+
+export async function fetchResumeUrl(candidateId: string): Promise<string> {
+  const res = await fetch(`/api/candidates/${candidateId}/resume-url`)
+  const body = await res.json().catch(() => null)
+  if (!res.ok) throw new Error(body?.error ?? `Failed to get resume link (${res.status})`)
+  return body.url as string
+}
+
+export interface Interview {
+  id: string
+  candidateId: string
+  candidateName: string
+  interviewerId?: string
+  interviewerName?: string | null
+  interviewDate?: string
+  round?: string
+  recommendation?: number
+  strengths?: string
+  concerns?: string
+}
+
+interface RawInterview extends Omit<Interview, 'id'> {
+  _id: string
+}
+
+export async function fetchInterviews(): Promise<Interview[]> {
+  const res = await fetch('/api/interviews')
+  if (!res.ok) throw new Error(`Failed to load interviews (${res.status})`)
+  const body = (await res.json()) as { data: RawInterview[] }
+  return body.data.map(({ _id, ...rest }) => ({ id: _id, ...rest }))
+}
+
+export interface ScheduleInterviewInput {
+  candidateId: string
+  interviewerId?: string
+  round?: string
+  interviewDate?: string
+}
+
+export async function createInterview(input: ScheduleInterviewInput): Promise<void> {
+  const res = await fetch('/api/interviews', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(input),
+  })
+  if (!res.ok) {
+    const body = await res.json().catch(() => null)
+    throw new Error(body?.error ?? `Failed to schedule interview (${res.status})`)
+  }
+}
+
+export interface UpdateInterviewInput {
+  interviewerId?: string
+  round?: string
+  interviewDate?: string
+  recommendation?: number
+  strengths?: string
+  concerns?: string
+}
+
+export async function updateInterview(id: string, input: UpdateInterviewInput): Promise<void> {
+  const res = await fetch(`/api/interviews/${id}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(input),
+  })
+  if (!res.ok) {
+    const body = await res.json().catch(() => null)
+    throw new Error(body?.error ?? `Failed to update interview (${res.status})`)
+  }
+}
+
+export async function deleteInterview(id: string): Promise<void> {
+  const res = await fetch(`/api/interviews/${id}`, { method: 'DELETE' })
+  if (res.ok) return
+  const body = await res.json().catch(() => null)
+  throw new Error(body?.error ?? `Failed to delete interview (${res.status})`)
+}
+
+export interface Offer {
+  id: string
+  candidateId: string
+  candidateName: string
+  status: number
+  offeredAmount?: number
+  sentDate?: string
+  expiryDate?: string
+  answeredDate?: string
+  startDate?: string
+  notes?: string
+}
+
+interface RawOffer extends Omit<Offer, 'id'> {
+  _id: string
+}
+
+export async function fetchOffers(): Promise<Offer[]> {
+  const res = await fetch('/api/offers')
+  if (!res.ok) throw new Error(`Failed to load offers (${res.status})`)
+  const body = (await res.json()) as { data: RawOffer[] }
+  return body.data.map(({ _id, ...rest }) => ({ id: _id, ...rest }))
+}
+
+/** Shortlisted AND at least one positive interview on file, and no offer yet — see backend/src/routes/offers.route.ts. */
+export async function fetchOfferEligibleCandidates(): Promise<Pick<Candidate, 'id' | 'fullName' | 'email'>[]> {
+  const res = await fetch('/api/offers/eligible-candidates')
+  if (!res.ok) throw new Error(`Failed to load eligible candidates (${res.status})`)
+  const body = (await res.json()) as { data: { _id: string; fullName: string; email: string }[] }
+  return body.data.map(({ _id, ...rest }) => ({ id: _id, ...rest }))
+}
+
+export interface CreateOfferInput {
+  candidateId: string
+  offeredAmount?: number
+  expiryDate?: string
+}
+
+export async function createOffer(input: CreateOfferInput): Promise<void> {
+  const res = await fetch('/api/offers', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(input),
+  })
+  if (!res.ok) {
+    const body = await res.json().catch(() => null)
+    throw new Error(body?.error ?? `Failed to create offer (${res.status})`)
+  }
+}
+
+export interface UpdateOfferInput {
+  status?: number
+  offeredAmount?: number
+  sentDate?: string
+  expiryDate?: string
+  answeredDate?: string
+  startDate?: string
+  notes?: string
+}
+
+export async function updateOffer(id: string, input: UpdateOfferInput): Promise<void> {
+  const res = await fetch(`/api/offers/${id}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(input),
+  })
+  if (!res.ok) {
+    const body = await res.json().catch(() => null)
+    throw new Error(body?.error ?? `Failed to update offer (${res.status})`)
+  }
+}
+
+export async function deleteOffer(id: string): Promise<void> {
+  const res = await fetch(`/api/offers/${id}`, { method: 'DELETE' })
+  if (res.ok) return
+  const body = await res.json().catch(() => null)
+  throw new Error(body?.error ?? `Failed to delete offer (${res.status})`)
 }
