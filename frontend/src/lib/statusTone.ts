@@ -17,7 +17,7 @@ function build(done: number[], attention: number[], failed: number[]) {
   }
 }
 
-export const docStatusTone = build([1, 3, 6], [0, 2], [4, 5])
+export const docStatusTone = build([3, 6], [0, 1, 2], [4, 5])
 export const checkStatusTone = build([3], [0, 1, 2], [4])
 export const assetStatusTone = build([1, 3], [0, 2], [4])
 export const offerStatusTone = build([3], [0, 1, 2], [4, 5, 6])

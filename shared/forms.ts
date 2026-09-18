@@ -54,9 +54,17 @@ export interface FormMeta {
    *  matches the form's "who fills it" role, e.g. "new joiner" only lists
    *  people actually mid-onboarding. Only set when subjectKind is teamMember. */
   eligibleMemberStatuses?: number[]
-  /** Same idea for candidate-scoped forms, restricted to briqbi_candidatestage
-   *  values (0 Applied … 7 Rejected). */
-  eligibleCandidateStages?: number[]
+  /**
+   * Same idea for candidate-scoped forms, but restricted to the real
+   * intranet's application status strings (applied/reviewing/shortlisted/
+   * rejected/hired) rather than the doc's briqbi_candidatestage choice —
+   * that column never became real; Candidate.status is a string enum from
+   * the live careers API instead (see backend/src/models/Candidate.ts).
+   * Only used by 'interview' — 'offer' needs a different check entirely
+   * (has a pending Offer record, not a Candidate-level status), handled
+   * as a special case in FormsToolPage.tsx.
+   */
+  eligibleCandidateStatuses?: string[]
 }
 
 export const FORMS: Record<FormKey, FormMeta> = {
@@ -134,7 +142,8 @@ export const FORMS: Record<FormKey, FormMeta> = {
     accent: 'green', // Hiring
     subjectKind: 'candidate',
     submitLabel: 'Accept offer',
-    eligibleCandidateStages: [3], // Offer
+    // No eligibleCandidateStatuses here on purpose — see the note on
+    // FormMeta.eligibleCandidateStatuses, this one is a special case.
   },
   interview: {
     key: 'interview',
@@ -145,7 +154,7 @@ export const FORMS: Record<FormKey, FormMeta> = {
     accent: 'green', // Hiring
     subjectKind: 'candidate',
     submitLabel: 'Submit feedback',
-    eligibleCandidateStages: [1, 2], // Screening or Interview
+    eligibleCandidateStatuses: ['shortlisted'],
   },
   reference: {
     key: 'reference',

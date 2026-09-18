@@ -1,16 +1,13 @@
-import { useEffect, useMemo, useState, type ReactNode } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import { useParams } from 'react-router-dom'
 import { FORMS, FORM_FIELDS, type FormKey } from '@shared/forms'
-import { decodeToken } from '../lib/linkToken'
+import { fetchTeamMembers, updateTeamMember, verifyLinkToken, type TeamMember, type VerifiedLink } from '../lib/api'
 import {
-  getTeamMember,
   submitConsent,
   submitExit,
   submitInterviewFeedback,
-  submitJoiner,
   submitPolicyAck,
   submitReference,
-  type TeamMember,
 } from '../lib/mockApi'
 import { TopBar, SiteFooter } from '../components/Chrome'
 import { Badge, StageTracker } from '../components/ui'
@@ -28,22 +25,34 @@ const ACCENT_ICON: Record<string, typeof ClockIcon> = {
 
 export default function FormPage() {
   const { token } = useParams()
-  const decoded = useMemo(() => decodeToken(token ?? ''), [token])
+  const [verified, setVerified] = useState<VerifiedLink | null>(null)
   const [done, setDone] = useState(false)
   const [pending, setPending] = useState(false)
   const [teamMember, setTeamMember] = useState<TeamMember | null>(null)
 
-  const okPayload = decoded.ok ? decoded.payload : null
+  useEffect(() => {
+    void verifyLinkToken(token ?? '').then(setVerified)
+  }, [token])
+
+  const okPayload = verified?.ok ? verified.payload : null
   const meta = okPayload ? FORMS[okPayload.formKey as FormKey] : null
 
   useEffect(() => {
     if (okPayload && meta?.subjectKind === 'teamMember') {
-      void getTeamMember(okPayload.subjectId).then((m) => setTeamMember(m ?? null))
+      void fetchTeamMembers().then((members) => setTeamMember(members.find((m) => m.id === okPayload.subjectId) ?? null))
     }
   }, [okPayload, meta])
 
-  if (!decoded.ok || !okPayload || !meta) {
-    const reason = decoded.ok ? undefined : decoded.reason
+  if (!verified) {
+    return (
+      <Shell tag="forms">
+        <p className="help">Checking link…</p>
+      </Shell>
+    )
+  }
+
+  if (!verified.ok || !okPayload || !meta) {
+    const reason = verified.ok ? undefined : verified.reason
     const message =
       reason === 'expired'
         ? 'This link has expired. Ask HR to send you a new one.'
@@ -71,7 +80,7 @@ export default function FormPage() {
     setPending(true)
     switch (formKey as FormKey) {
       case 'joiner':
-        await submitJoiner(subjectId, {
+        await updateTeamMember(subjectId, {
           personalEmail: String(values.personalEmail ?? ''),
           phone: String(values.phone ?? ''),
           emergencyContact: String(values.emergencyContact ?? ''),
@@ -147,7 +156,7 @@ export default function FormPage() {
               <div>
                 <div style={{ fontWeight: 700, fontSize: 15 }}>Recorded.</div>
                 <p className="help" style={{ marginTop: 4 }}>
-                  Thanks — this has been written back to Dataverse. You can close this tab.
+                  Thanks — you can close this tab.
                 </p>
               </div>
             </div>

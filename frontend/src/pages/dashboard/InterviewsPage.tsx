@@ -14,6 +14,9 @@ import {
 import { recommendationTone } from '../../lib/statusTone'
 import { PageHeader, StatusPill } from '../../components/ui'
 import { DataTable, type Column } from '../../components/DataTable'
+import { FilterBar } from '../../components/FilterBar'
+import { Pagination } from '../../components/Pagination'
+import { usePagination } from '../../lib/usePagination'
 import { Modal } from '../../components/Modal'
 import { CloseIcon } from '../../components/icons'
 
@@ -23,6 +26,8 @@ export default function InterviewsPage() {
   const [showSchedule, setShowSchedule] = useState(false)
   const [editing, setEditing] = useState<Interview | null>(null)
   const [deleting, setDeleting] = useState<Interview | null>(null)
+  const [search, setSearch] = useState('')
+  const [verdictFilter, setVerdictFilter] = useState('')
 
   function reload() {
     fetchInterviews()
@@ -31,6 +36,13 @@ export default function InterviewsPage() {
   }
 
   useEffect(reload, [])
+
+  const filtered = (rows ?? []).filter((r) => {
+    if (search && !r.candidateName.toLowerCase().includes(search.toLowerCase())) return false
+    if (verdictFilter !== '' && r.recommendation !== Number(verdictFilter)) return false
+    return true
+  })
+  const { pageRows, page, setPage, totalPages } = usePagination(filtered, 10)
 
   const columns: Column<Interview>[] = [
     { key: 'candidate', label: 'Candidate', render: (r) => r.candidateName },
@@ -77,7 +89,21 @@ export default function InterviewsPage() {
         }
       />
       {error && <p className="error">{error}</p>}
-      <DataTable columns={columns} rows={rows} emptyText="No interviews yet." />
+      <FilterBar
+        search={search}
+        onSearchChange={setSearch}
+        searchPlaceholder="Search by candidate…"
+        filters={[
+          {
+            label: 'Verdict',
+            value: verdictFilter,
+            onChange: setVerdictFilter,
+            options: RECOMMENDATION.map((c) => ({ value: String(c.value), label: c.label })),
+          },
+        ]}
+      />
+      <DataTable columns={columns} rows={rows === null ? null : pageRows} emptyText="No interviews match." />
+      <Pagination page={page} totalPages={totalPages} onChange={setPage} />
 
       {showSchedule && (
         <ScheduleInterviewModal

@@ -12,6 +12,9 @@ import {
 import { assetStatusTone } from '../../lib/statusTone'
 import { PageHeader, StatusPill } from '../../components/ui'
 import { DataTable, type Column } from '../../components/DataTable'
+import { FilterBar } from '../../components/FilterBar'
+import { Pagination } from '../../components/Pagination'
+import { usePagination } from '../../lib/usePagination'
 import { Modal } from '../../components/Modal'
 import { CloseIcon } from '../../components/icons'
 
@@ -24,6 +27,9 @@ export default function AssetsPage() {
   const [showAdd, setShowAdd] = useState(false)
   const [editing, setEditing] = useState<Asset | null>(null)
   const [deleting, setDeleting] = useState<Asset | null>(null)
+  const [search, setSearch] = useState('')
+  const [typeFilter, setTypeFilter] = useState('')
+  const [statusFilter, setStatusFilter] = useState('')
 
   function reload() {
     Promise.all([fetchAssets(), fetchTeamMembers()])
@@ -41,6 +47,14 @@ export default function AssetsPage() {
   }
 
   const rows: Row[] | null = assets && assets.map((a) => ({ ...a, memberName: memberName(a.teamMemberId) }))
+
+  const filtered = (rows ?? []).filter((r) => {
+    if (search && !r.memberName.toLowerCase().includes(search.toLowerCase())) return false
+    if (typeFilter !== '' && r.assetType !== Number(typeFilter)) return false
+    if (statusFilter !== '' && r.status !== Number(statusFilter)) return false
+    return true
+  })
+  const { pageRows, page, setPage, totalPages } = usePagination(filtered, 10)
 
   const columns: Column<Row>[] = [
     { key: 'member', label: 'Who Has It', render: (r) => r.memberName },
@@ -83,7 +97,33 @@ export default function AssetsPage() {
           </button>
         }
       />
-      {error ? <p className="error">{error}</p> : <DataTable columns={columns} rows={rows} emptyText="No assets yet." />}
+      {error ? (
+        <p className="error">{error}</p>
+      ) : (
+        <>
+          <FilterBar
+            search={search}
+            onSearchChange={setSearch}
+            searchPlaceholder="Search by holder…"
+            filters={[
+              {
+                label: 'Item',
+                value: typeFilter,
+                onChange: setTypeFilter,
+                options: ASSET_TYPE.map((c) => ({ value: String(c.value), label: c.label })),
+              },
+              {
+                label: 'Status',
+                value: statusFilter,
+                onChange: setStatusFilter,
+                options: ASSET_STATUS.map((c) => ({ value: String(c.value), label: c.label })),
+              },
+            ]}
+          />
+          <DataTable columns={columns} rows={rows === null ? null : pageRows} emptyText="No assets match." />
+          <Pagination page={page} totalPages={totalPages} onChange={setPage} />
+        </>
+      )}
 
       {showAdd && (
         <AssetFormModal

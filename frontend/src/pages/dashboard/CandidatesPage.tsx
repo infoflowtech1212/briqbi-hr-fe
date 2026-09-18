@@ -10,6 +10,9 @@ import {
 import { applicationStatusTone } from '../../lib/statusTone'
 import { PageHeader } from '../../components/ui'
 import { DataTable, type Column } from '../../components/DataTable'
+import { FilterBar } from '../../components/FilterBar'
+import { Pagination } from '../../components/Pagination'
+import { usePagination } from '../../lib/usePagination'
 
 const TONE_VAR: Record<string, string> = { green: 'green', orange: 'orange', danger: 'danger' }
 
@@ -51,14 +54,14 @@ export default function CandidatesPage() {
   }
 
   const filtered = useMemo(() => {
-    if (!rows) return null
     const q = search.trim().toLowerCase()
-    return rows.filter((r) => {
+    return (rows ?? []).filter((r) => {
       const matchesSearch = !q || r.fullName.toLowerCase().includes(q) || r.email.toLowerCase().includes(q)
       const matchesStatus = !statusFilter || r.status === statusFilter
       return matchesSearch && matchesStatus
     })
   }, [rows, search, statusFilter])
+  const { pageRows, page, setPage, totalPages } = usePagination(filtered, 10)
 
   const columns: Column<Candidate>[] = [
     {
@@ -114,37 +117,23 @@ export default function CandidatesPage() {
   return (
     <>
       <PageHeader title="Candidates" subtitle="Everyone who has applied, synced from the live careers site." />
-      <div style={{ display: 'flex', gap: 12, marginBottom: 20 }}>
-        <input
-          type="text"
-          placeholder="Search name, email…"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          style={{
-            flex: 1,
-            maxWidth: 320,
-            padding: '10px 14px',
-            borderRadius: 10,
-            border: '1px solid var(--paper-border)',
-            fontSize: 13.5,
-          }}
-        />
-        <select
-          value={statusFilter}
-          onChange={(e) => setStatusFilter(e.target.value as '' | ApplicationStatus)}
-          style={{ padding: '10px 14px', borderRadius: 10, border: '1px solid var(--paper-border)', fontSize: 13.5 }}
-        >
-          <option value="">All Status</option>
-          {APPLICATION_STATUSES.map((s) => (
-            <option key={s} value={s}>
-              {s.charAt(0).toUpperCase() + s.slice(1)}
-            </option>
-          ))}
-        </select>
-      </div>
       {error && <p className="error">{error}</p>}
       {resumeError && <p className="error">{resumeError}</p>}
-      <DataTable columns={columns} rows={filtered} emptyText="No candidates match." />
+      <FilterBar
+        search={search}
+        onSearchChange={setSearch}
+        searchPlaceholder="Search name, email…"
+        filters={[
+          {
+            label: 'Status',
+            value: statusFilter,
+            onChange: (v) => setStatusFilter(v as '' | ApplicationStatus),
+            options: APPLICATION_STATUSES.map((s) => ({ value: s, label: s.charAt(0).toUpperCase() + s.slice(1) })),
+          },
+        ]}
+      />
+      <DataTable columns={columns} rows={rows === null ? null : pageRows} emptyText="No candidates match." />
+      <Pagination page={page} totalPages={totalPages} onChange={setPage} />
     </>
   )
 }

@@ -1,18 +1,17 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { FORMS, LINKED_FORM_KEYS, type FormKey } from '@shared/forms'
-import { choiceLabel, MEMBER_STATUS, CANDIDATE_STAGE } from '@shared/optionSets'
+import { choiceLabel, MEMBER_STATUS } from '@shared/optionSets'
 import {
-  listCandidates,
-  listMintedLinks,
-  listTeamMembers,
+  fetchCandidates,
+  fetchMintedLinks,
+  fetchOffers,
+  fetchTeamMembers,
   mintLink,
-  recordLink,
   type Candidate,
   type MintedLink,
   type TeamMember,
-} from '../../lib/mockApi'
-import { encodeToken } from '../../lib/linkToken'
+} from '../../lib/api'
 import { PageHeader } from '../../components/ui'
 import { CopyIcon, ArrowUpRightIcon } from '../../components/icons'
 
@@ -34,48 +33,58 @@ function MintTool() {
   const [formKey, setFormKey] = useState<FormKey>('joiner')
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([])
   const [candidates, setCandidates] = useState<Candidate[]>([])
+  // Candidates with a pending offer (Sent=1 or Waiting=2) — only 'offer'
+  // needs this; there's no Candidate-level status for "has a pending
+  // offer", it lives on the Offer record instead. See shared/forms.ts's
+  // note on FormMeta.eligibleCandidateStatuses.
+  const [awaitingOfferIds, setAwaitingOfferIds] = useState<Set<string>>(new Set())
   const [subjectId, setSubjectId] = useState('')
   const [expiryDays, setExpiryDays] = useState(14)
   const [generated, setGenerated] = useState<{ url: string; expiresAt: string } | null>(null)
   const [copied, setCopied] = useState(false)
+  const [pending, setPending] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    void listTeamMembers().then(setTeamMembers)
-    void listCandidates().then(setCandidates)
+    void fetchTeamMembers().then(setTeamMembers)
+    void fetchCandidates().then(setCandidates)
+    void fetchOffers().then((offers) => {
+      const ids = offers.filter((o) => o.status === 1 || o.status === 2).map((o) => o.candidateId)
+      setAwaitingOfferIds(new Set(ids))
+    })
   }, [])
 
   const meta = FORMS[formKey]
   const subjects: (TeamMember | Candidate)[] =
     meta.subjectKind === 'candidate'
-      ? meta.eligibleCandidateStages
-        ? candidates.filter((c) => meta.eligibleCandidateStages!.includes(c.candidateStage))
-        : candidates
+      ? formKey === 'offer'
+        ? candidates.filter((c) => awaitingOfferIds.has(c.id))
+        : meta.eligibleCandidateStatuses
+          ? candidates.filter((c) => meta.eligibleCandidateStatuses!.includes(c.status))
+          : candidates
       : meta.eligibleMemberStatuses
         ? teamMembers.filter((m) => meta.eligibleMemberStatuses!.includes(m.memberStatus))
         : teamMembers
-  const subjectLabel = (id: string) => {
-    const s = subjects.find((x) => x.id === id)
-    return s?.fullName ?? ''
-  }
   const subjectStatus = (s: TeamMember | Candidate) =>
     meta.subjectKind === 'candidate'
-      ? choiceLabel(CANDIDATE_STAGE, (s as Candidate).candidateStage)
+      ? (s as Candidate).status.charAt(0).toUpperCase() + (s as Candidate).status.slice(1)
       : choiceLabel(MEMBER_STATUS, (s as TeamMember).memberStatus)
 
   async function generate() {
     if (!subjectId) return
-    const label = subjectLabel(subjectId)
-    const link = await mintLink({ formKey, subjectId, subjectLabel: label, expiryDays })
-    const token = encodeToken({
-      formKey,
-      subjectId,
-      subjectLabel: label,
-      exp: new Date(link.expiresAt).getTime(),
-    })
-    const full: MintedLink = { ...link, token }
-    await recordLink(full)
-    setGenerated({ url: `${window.location.origin}/f/${token}`, expiresAt: link.expiresAt })
-    setCopied(false)
+    const subject = subjects.find((s) => s.id === subjectId)
+    if (!subject) return
+    setPending(true)
+    setError(null)
+    try {
+      const link = await mintLink({ formKey, subjectId, subjectLabel: subject.fullName, expiryDays })
+      setGenerated({ url: `${window.location.origin}/f/${link.token}`, expiresAt: link.expiresAt })
+      setCopied(false)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to mint link.')
+    } finally {
+      setPending(false)
+    }
   }
 
   async function copy() {
@@ -142,10 +151,11 @@ function MintTool() {
         </div>
       </div>
       <div style={{ marginTop: 18 }}>
-        <button className="btn btn-solid-dark" onClick={() => void generate()} disabled={!subjectId}>
-          Generate link
+        <button className="btn btn-solid-dark" onClick={() => void generate()} disabled={!subjectId || pending}>
+          {pending ? 'Generating…' : 'Generate link'}
         </button>
       </div>
+      {error && <p className="error" style={{ marginTop: 12 }}>{error}</p>}
       {generated && (
         <div style={{ marginTop: 18, display: 'flex', gap: 8, alignItems: 'center' }}>
           <input
@@ -168,7 +178,7 @@ function RecentLinks() {
   const [links, setLinks] = useState<MintedLink[]>([])
 
   useEffect(() => {
-    void listMintedLinks().then(setLinks)
+    void fetchMintedLinks().then(setLinks)
   }, [])
 
   if (links.length === 0) return null
@@ -179,7 +189,7 @@ function RecentLinks() {
       <div className="form-grid" style={{ gap: 10 }}>
         {links.map((l) => (
           <div
-            key={l.token}
+            key={l.id}
             className="card"
             style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: 16, gap: 12 }}
           >

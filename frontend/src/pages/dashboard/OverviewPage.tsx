@@ -1,13 +1,6 @@
 import { useEffect, useState } from 'react'
-import {
-  listAllAssets,
-  listAllBackgroundChecks,
-  listAllDocuments,
-  listAllJobOpenings,
-  listCandidates,
-  listTeamMembers,
-} from '../../lib/mockApi'
-import { fetchJoiningTasks } from '../../lib/api'
+import { listAllAssets, listAllJobOpenings, listCandidates, listTeamMembers } from '../../lib/mockApi'
+import { fetchBackgroundChecks, fetchDocuments, fetchJoiningTasks } from '../../lib/api'
 import { PageHeader, StatRow } from '../../components/ui'
 
 interface Attention {
@@ -25,8 +18,8 @@ export default function OverviewPage() {
       listTeamMembers(),
       listAllJobOpenings(),
       listCandidates(),
-      listAllBackgroundChecks(),
-      listAllDocuments(),
+      fetchBackgroundChecks(),
+      fetchDocuments(),
       fetchJoiningTasks(),
       listAllAssets(),
     ]).then(([members, openings, candidates, checks, docs, tasks, assets]) => {
@@ -43,7 +36,7 @@ export default function OverviewPage() {
         },
         {
           label: 'Needs chasing',
-          count: docs.filter((d) => d.status === 2).length,
+          count: docs.filter((d) => d.status === 1).length,
           hint: 'documents sent for signature, not yet back',
         },
         {

@@ -9,6 +9,9 @@ import {
 } from '../../lib/api'
 import { PageHeader, StatusPill } from '../../components/ui'
 import { DataTable, type Column } from '../../components/DataTable'
+import { FilterBar } from '../../components/FilterBar'
+import { Pagination } from '../../components/Pagination'
+import { usePagination } from '../../lib/usePagination'
 import { Modal } from '../../components/Modal'
 import { CloseIcon } from '../../components/icons'
 
@@ -18,6 +21,9 @@ export default function TeamMembersPage() {
   const [showAdd, setShowAdd] = useState(false)
   const [editing, setEditing] = useState<TeamMember | null>(null)
   const [deleting, setDeleting] = useState<TeamMember | null>(null)
+  const [search, setSearch] = useState('')
+  const [deptFilter, setDeptFilter] = useState('')
+  const [statusFilter, setStatusFilter] = useState('')
 
   function reload() {
     fetchTeamMembers()
@@ -26,6 +32,15 @@ export default function TeamMembersPage() {
   }
 
   useEffect(reload, [])
+
+  const filtered = (rows ?? []).filter((r) => {
+    const q = search.toLowerCase()
+    if (q && !r.fullName.toLowerCase().includes(q) && !r.memberId.toLowerCase().includes(q)) return false
+    if (deptFilter !== '' && r.department !== Number(deptFilter)) return false
+    if (statusFilter !== '' && r.memberStatus !== Number(statusFilter)) return false
+    return true
+  })
+  const { pageRows, page, setPage, totalPages } = usePagination(filtered, 10)
 
   const columns: Column<TeamMember>[] = [
     { key: 'memberId', label: 'Member ID', render: (r) => <span className="mono">{r.memberId}</span> },
@@ -76,7 +91,33 @@ export default function TeamMembersPage() {
           </button>
         }
       />
-      {error ? <p className="error">{error}</p> : <DataTable columns={columns} rows={rows} emptyText="No team members yet." />}
+      {error ? (
+        <p className="error">{error}</p>
+      ) : (
+        <>
+          <FilterBar
+            search={search}
+            onSearchChange={setSearch}
+            searchPlaceholder="Search by name or member ID…"
+            filters={[
+              {
+                label: 'Department',
+                value: deptFilter,
+                onChange: setDeptFilter,
+                options: DEPARTMENT.map((c) => ({ value: String(c.value), label: c.label })),
+              },
+              {
+                label: 'Status',
+                value: statusFilter,
+                onChange: setStatusFilter,
+                options: MEMBER_STATUS.map((c) => ({ value: String(c.value), label: c.label })),
+              },
+            ]}
+          />
+          <DataTable columns={columns} rows={rows === null ? null : pageRows} emptyText="No team members match." />
+          <Pagination page={page} totalPages={totalPages} onChange={setPage} />
+        </>
+      )}
 
       {showAdd && (
         <TeamMemberFormModal

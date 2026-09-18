@@ -12,6 +12,9 @@ import {
 import { taskStatusTone } from '../../lib/statusTone'
 import { PageHeader, StatusPill } from '../../components/ui'
 import { DataTable, type Column } from '../../components/DataTable'
+import { FilterBar } from '../../components/FilterBar'
+import { Pagination } from '../../components/Pagination'
+import { usePagination } from '../../lib/usePagination'
 import { Modal } from '../../components/Modal'
 import { CloseIcon } from '../../components/icons'
 
@@ -22,6 +25,9 @@ export default function JoiningTasksPage() {
   const [showAdd, setShowAdd] = useState(false)
   const [editing, setEditing] = useState<JoiningTask | null>(null)
   const [deleting, setDeleting] = useState<JoiningTask | null>(null)
+  const [search, setSearch] = useState('')
+  const [stageFilter, setStageFilter] = useState('')
+  const [statusFilter, setStatusFilter] = useState('')
 
   function reload() {
     Promise.all([fetchJoiningTasks(), fetchTeamMembers()])
@@ -33,6 +39,14 @@ export default function JoiningTasksPage() {
   }
 
   useEffect(reload, [])
+
+  const filtered = (tasks ?? []).filter((r) => {
+    if (search && !(r.memberName ?? '').toLowerCase().includes(search.toLowerCase())) return false
+    if (stageFilter !== '' && r.stage !== Number(stageFilter)) return false
+    if (statusFilter !== '' && r.status !== Number(statusFilter)) return false
+    return true
+  })
+  const { pageRows, page, setPage, totalPages } = usePagination(filtered, 10)
 
   const columns: Column<JoiningTask>[] = [
     { key: 'member', label: 'Person', render: (r) => r.memberName ?? 'Unknown' },
@@ -76,7 +90,33 @@ export default function JoiningTasksPage() {
           </button>
         }
       />
-      {error ? <p className="error">{error}</p> : <DataTable columns={columns} rows={tasks} emptyText="No joining tasks yet." />}
+      {error ? (
+        <p className="error">{error}</p>
+      ) : (
+        <>
+          <FilterBar
+            search={search}
+            onSearchChange={setSearch}
+            searchPlaceholder="Search by person…"
+            filters={[
+              {
+                label: 'Stage',
+                value: stageFilter,
+                onChange: setStageFilter,
+                options: ONBOARDING_STAGE.map((c) => ({ value: String(c.value), label: c.label })),
+              },
+              {
+                label: 'Status',
+                value: statusFilter,
+                onChange: setStatusFilter,
+                options: TASK_STATUS.map((c) => ({ value: String(c.value), label: c.label })),
+              },
+            ]}
+          />
+          <DataTable columns={columns} rows={tasks === null ? null : pageRows} emptyText="No joining tasks match." />
+          <Pagination page={page} totalPages={totalPages} onChange={setPage} />
+        </>
+      )}
 
       {showAdd && (
         <JoiningTaskFormModal

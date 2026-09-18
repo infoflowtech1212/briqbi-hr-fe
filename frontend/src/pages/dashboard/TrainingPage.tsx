@@ -12,6 +12,9 @@ import {
 import { trainingStatusTone } from '../../lib/statusTone'
 import { PageHeader, StatusPill } from '../../components/ui'
 import { DataTable, type Column } from '../../components/DataTable'
+import { FilterBar } from '../../components/FilterBar'
+import { Pagination } from '../../components/Pagination'
+import { usePagination } from '../../lib/usePagination'
 import { Modal } from '../../components/Modal'
 import { CloseIcon } from '../../components/icons'
 
@@ -24,6 +27,9 @@ export default function TrainingPage() {
   const [showAdd, setShowAdd] = useState(false)
   const [editing, setEditing] = useState<TrainingRecord | null>(null)
   const [deleting, setDeleting] = useState<TrainingRecord | null>(null)
+  const [search, setSearch] = useState('')
+  const [typeFilter, setTypeFilter] = useState('')
+  const [statusFilter, setStatusFilter] = useState('')
 
   function reload() {
     Promise.all([fetchTrainingRecords(), fetchTeamMembers()])
@@ -41,6 +47,14 @@ export default function TrainingPage() {
   }
 
   const rows: Row[] | null = records && records.map((r) => ({ ...r, memberName: memberName(r.teamMemberId) }))
+
+  const filtered = (rows ?? []).filter((r) => {
+    if (search && !r.memberName.toLowerCase().includes(search.toLowerCase())) return false
+    if (typeFilter !== '' && r.trainingType !== Number(typeFilter)) return false
+    if (statusFilter !== '' && r.trainingStatus !== Number(statusFilter)) return false
+    return true
+  })
+  const { pageRows, page, setPage, totalPages } = usePagination(filtered, 10)
 
   const columns: Column<Row>[] = [
     { key: 'member', label: 'Person', render: (r) => r.memberName },
@@ -85,7 +99,33 @@ export default function TrainingPage() {
           </button>
         }
       />
-      {error ? <p className="error">{error}</p> : <DataTable columns={columns} rows={rows} emptyText="No training records yet." />}
+      {error ? (
+        <p className="error">{error}</p>
+      ) : (
+        <>
+          <FilterBar
+            search={search}
+            onSearchChange={setSearch}
+            searchPlaceholder="Search by person…"
+            filters={[
+              {
+                label: 'Type',
+                value: typeFilter,
+                onChange: setTypeFilter,
+                options: TRAINING_TYPE.map((c) => ({ value: String(c.value), label: c.label })),
+              },
+              {
+                label: 'Status',
+                value: statusFilter,
+                onChange: setStatusFilter,
+                options: TRAINING_STATUS.map((c) => ({ value: String(c.value), label: c.label })),
+              },
+            ]}
+          />
+          <DataTable columns={columns} rows={rows === null ? null : pageRows} emptyText="No training records match." />
+          <Pagination page={page} totalPages={totalPages} onChange={setPage} />
+        </>
+      )}
 
       {showAdd && (
         <TrainingRecordFormModal

@@ -2,6 +2,9 @@ import { useEffect, useState } from 'react'
 import { fetchJobOpenings, type JobOpening } from '../../lib/api'
 import { PageHeader, StatusPill } from '../../components/ui'
 import { DataTable, type Column } from '../../components/DataTable'
+import { FilterBar } from '../../components/FilterBar'
+import { Pagination } from '../../components/Pagination'
+import { usePagination } from '../../lib/usePagination'
 import { Modal } from '../../components/Modal'
 import { CloseIcon } from '../../components/icons'
 
@@ -9,12 +12,24 @@ export default function JobOpeningsPage() {
   const [rows, setRows] = useState<JobOpening[] | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [selected, setSelected] = useState<JobOpening | null>(null)
+  const [search, setSearch] = useState('')
+  const [deptFilter, setDeptFilter] = useState('')
+  const [statusFilter, setStatusFilter] = useState('')
 
   useEffect(() => {
     fetchJobOpenings()
       .then(setRows)
       .catch((err) => setError(err instanceof Error ? err.message : 'Failed to load job openings'))
   }, [])
+
+  const departments = [...new Set((rows ?? []).map((r) => r.department))].sort()
+  const filtered = (rows ?? []).filter((r) => {
+    if (search && !r.role.toLowerCase().includes(search.toLowerCase())) return false
+    if (deptFilter !== '' && r.department !== deptFilter) return false
+    if (statusFilter !== '' && String(r.isActive) !== statusFilter) return false
+    return true
+  })
+  const { pageRows, page, setPage, totalPages } = usePagination(filtered, 10)
 
   const columns: Column<JobOpening>[] = [
     { key: 'role', label: 'Role', render: (r) => r.role },
@@ -42,7 +57,36 @@ export default function JobOpeningsPage() {
   return (
     <>
       <PageHeader title="Job Openings" subtitle="Synced from the live careers API — every role currently posted." />
-      {error ? <p className="error">{error}</p> : <DataTable columns={columns} rows={rows} emptyText="No job openings yet." />}
+      {error ? (
+        <p className="error">{error}</p>
+      ) : (
+        <>
+          <FilterBar
+            search={search}
+            onSearchChange={setSearch}
+            searchPlaceholder="Search by role…"
+            filters={[
+              {
+                label: 'Department',
+                value: deptFilter,
+                onChange: setDeptFilter,
+                options: departments.map((d) => ({ value: d, label: d })),
+              },
+              {
+                label: 'Status',
+                value: statusFilter,
+                onChange: setStatusFilter,
+                options: [
+                  { value: 'true', label: 'Active' },
+                  { value: 'false', label: 'Inactive' },
+                ],
+              },
+            ]}
+          />
+          <DataTable columns={columns} rows={rows === null ? null : pageRows} emptyText="No job openings match." />
+          <Pagination page={page} totalPages={totalPages} onChange={setPage} />
+        </>
+      )}
 
       {selected && (
         <Modal onClose={() => setSelected(null)}>

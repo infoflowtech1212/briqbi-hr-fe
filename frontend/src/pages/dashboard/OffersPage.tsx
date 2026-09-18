@@ -12,6 +12,9 @@ import {
 import { offerStatusTone } from '../../lib/statusTone'
 import { PageHeader, StatusPill } from '../../components/ui'
 import { DataTable, type Column } from '../../components/DataTable'
+import { FilterBar } from '../../components/FilterBar'
+import { Pagination } from '../../components/Pagination'
+import { usePagination } from '../../lib/usePagination'
 import { Modal } from '../../components/Modal'
 import { CloseIcon } from '../../components/icons'
 
@@ -21,6 +24,8 @@ export default function OffersPage() {
   const [showCreate, setShowCreate] = useState(false)
   const [editing, setEditing] = useState<Offer | null>(null)
   const [deleting, setDeleting] = useState<Offer | null>(null)
+  const [search, setSearch] = useState('')
+  const [statusFilter, setStatusFilter] = useState('')
 
   function reload() {
     fetchOffers()
@@ -29,6 +34,13 @@ export default function OffersPage() {
   }
 
   useEffect(reload, [])
+
+  const filtered = (rows ?? []).filter((r) => {
+    if (search && !r.candidateName.toLowerCase().includes(search.toLowerCase())) return false
+    if (statusFilter !== '' && r.status !== Number(statusFilter)) return false
+    return true
+  })
+  const { pageRows, page, setPage, totalPages } = usePagination(filtered, 10)
 
   const columns: Column<Offer>[] = [
     { key: 'candidate', label: 'Candidate', render: (r) => r.candidateName },
@@ -72,7 +84,21 @@ export default function OffersPage() {
         }
       />
       {error && <p className="error">{error}</p>}
-      <DataTable columns={columns} rows={rows} emptyText="No offers yet." />
+      <FilterBar
+        search={search}
+        onSearchChange={setSearch}
+        searchPlaceholder="Search by candidate…"
+        filters={[
+          {
+            label: 'Status',
+            value: statusFilter,
+            onChange: setStatusFilter,
+            options: OFFER_STATUS.map((c) => ({ value: String(c.value), label: c.label })),
+          },
+        ]}
+      />
+      <DataTable columns={columns} rows={rows === null ? null : pageRows} emptyText="No offers match." />
+      <Pagination page={page} totalPages={totalPages} onChange={setPage} />
 
       {showCreate && (
         <CreateOfferModal

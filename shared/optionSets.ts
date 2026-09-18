@@ -60,11 +60,10 @@ export const CHECK_OUTCOME: Choice[] = [
   { value: 3, label: 'Failed' },
 ]
 
-/** INFERRED sequence — doc only confirms 3 Verified / 4 Rejected / 5 Expired / 6 Waived. */
 export const DOC_STATUS: Choice[] = [
   { value: 0, label: 'Missing' },
-  { value: 1, label: 'Received' },
-  { value: 2, label: 'Sent for Signature' },
+  { value: 1, label: 'Sent for signature' },
+  { value: 2, label: 'Received' },
   { value: 3, label: 'Verified' },
   { value: 4, label: 'Rejected' },
   { value: 5, label: 'Expired' },
@@ -95,6 +94,25 @@ export const DOC_TYPE: Choice[] = [
   { value: 20, label: '194J declaration' },
   { value: 21, label: 'Emergency contact' },
 ]
+
+/**
+ * Which document types apply to which Person Type (PERSON_TYPE). The doc
+ * confirms the checklist flow creates 16 documents for an employee, 13 for
+ * a consultant, 13 for an intern, but never lists which of the 22 types
+ * make up each set — only logical grouping by document semantics (e.g.
+ * PF UAN only applies to employees under Indian labour law, GST
+ * registration and the 194J TDS declaration only apply to consultants
+ * invoicing as a business, College enrolment only applies to interns).
+ * This mapping was built to match those confirmed counts (16/13/13)
+ * exactly as a sanity check, but the exact list is not itself confirmed
+ * by the doc — adjust if it turns out to be wrong.
+ */
+const DOC_TYPES_COMMON = [0, 1, 2, 3, 4, 5, 9, 10, 19, 21] // PAN, Aadhaar, Address proof, Photo, Bank details, Offer letter, NDA and IP, Check consent, Policy acknowledgement, Emergency contact
+export const DOC_TYPES_BY_PERSON_TYPE: Record<number, number[]> = {
+  0: [...DOC_TYPES_COMMON, 6, 11, 12, 13, 14, 18], // Employee (+Employment agreement, Education certificates, Relieving letter, Experience letter, Last 3 payslips, PF UAN and nomination) = 16
+  1: [...DOC_TYPES_COMMON, 7, 16, 20], // Consultant (+Consultancy agreement, GST registration, 194J declaration) = 13
+  2: [...DOC_TYPES_COMMON, 8, 11, 15], // Intern (+Internship agreement, Education certificates, College enrolment) = 13
+}
 
 /** INFERRED — not enumerated in the doc. */
 export const SIGNATURE_METHOD: Choice[] = [
@@ -186,14 +204,6 @@ export const APPLICATION_SOURCE: Choice[] = [
   { value: 2, label: 'Job board' },
   { value: 3, label: 'Company website' },
   { value: 4, label: 'Other' },
-]
-
-/** INFERRED — not enumerated in the doc. */
-export const CHECK_PROVIDER: Choice[] = [
-  { value: 0, label: 'IDfy' },
-  { value: 1, label: 'SpringVerify' },
-  { value: 2, label: 'AuthBridge' },
-  { value: 3, label: 'Manual / other' },
 ]
 
 export function choiceLabel(set: Choice[], value: number): string {

@@ -86,6 +86,11 @@ export interface UpdateTeamMemberInput {
   department?: number
   workEmail?: string
   memberStatus?: number
+  personalEmail?: string
+  phone?: string
+  emergencyContact?: string
+  pan?: string
+  bankAccountRef?: string
 }
 
 export async function updateTeamMember(id: string, input: UpdateTeamMemberInput): Promise<TeamMember> {
@@ -538,4 +543,214 @@ export async function deleteOffer(id: string): Promise<void> {
   if (res.ok) return
   const body = await res.json().catch(() => null)
   throw new Error(body?.error ?? `Failed to delete offer (${res.status})`)
+}
+
+export interface BackgroundCheck {
+  id: string
+  teamMemberId: string
+  memberName?: string
+  status: number
+  outcome?: number
+  provider?: string
+  consentReceived: boolean
+  consentDate?: string
+  initiatedDate?: string
+  dueDate?: string
+  notes?: string
+}
+
+interface RawBackgroundCheck extends Omit<BackgroundCheck, 'id'> {
+  _id: string
+}
+
+export async function fetchBackgroundChecks(): Promise<BackgroundCheck[]> {
+  const res = await fetch('/api/background-checks')
+  if (!res.ok) throw new Error(`Failed to load background checks (${res.status})`)
+  const body = (await res.json()) as { data: RawBackgroundCheck[] }
+  return body.data.map(({ _id, ...rest }) => ({ id: _id, ...rest }))
+}
+
+export interface CreateBackgroundCheckInput {
+  teamMemberId: string
+  provider?: string
+  dueDate?: string
+}
+
+export async function createBackgroundCheck(input: CreateBackgroundCheckInput): Promise<void> {
+  const res = await fetch('/api/background-checks', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(input),
+  })
+  if (!res.ok) {
+    const body = await res.json().catch(() => null)
+    throw new Error(body?.error ?? `Failed to create background check (${res.status})`)
+  }
+}
+
+export interface UpdateBackgroundCheckInput {
+  status?: number
+  outcome?: number
+  provider?: string
+  consentReceived?: boolean
+  consentDate?: string
+  initiatedDate?: string
+  dueDate?: string
+  notes?: string
+}
+
+export async function updateBackgroundCheck(id: string, input: UpdateBackgroundCheckInput): Promise<void> {
+  const res = await fetch(`/api/background-checks/${id}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(input),
+  })
+  if (!res.ok) {
+    const body = await res.json().catch(() => null)
+    throw new Error(body?.error ?? `Failed to update background check (${res.status})`)
+  }
+}
+
+export async function deleteBackgroundCheck(id: string): Promise<void> {
+  const res = await fetch(`/api/background-checks/${id}`, { method: 'DELETE' })
+  if (res.ok) return
+  const body = await res.json().catch(() => null)
+  throw new Error(body?.error ?? `Failed to delete background check (${res.status})`)
+}
+
+export interface DocumentRecord {
+  id: string
+  teamMemberId: string
+  memberName?: string
+  documentType: number
+  status: number
+  neededBy?: string
+  collectedDate?: string
+  expiryDate?: string
+  sentForSignature?: string
+  signatureMethod?: string
+  signedDate?: string
+  verified: boolean
+  fileName?: string
+  fileMimeType?: string
+  fileSize?: number
+  fileUploadedAt?: string
+}
+
+interface RawDocument extends Omit<DocumentRecord, 'id'> {
+  _id: string
+}
+
+export async function fetchDocuments(): Promise<DocumentRecord[]> {
+  const res = await fetch('/api/documents')
+  if (!res.ok) throw new Error(`Failed to load documents (${res.status})`)
+  const body = (await res.json()) as { data: RawDocument[] }
+  return body.data.map(({ _id, ...rest }) => ({ id: _id, ...rest }))
+}
+
+export interface CreateDocumentInput {
+  teamMemberId: string
+  documentType: number
+  neededBy?: string
+}
+
+export async function createDocument(input: CreateDocumentInput): Promise<void> {
+  const res = await fetch('/api/documents', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(input),
+  })
+  if (!res.ok) {
+    const body = await res.json().catch(() => null)
+    throw new Error(body?.error ?? `Failed to create document (${res.status})`)
+  }
+}
+
+export interface UpdateDocumentInput {
+  documentType?: number
+  status?: number
+  neededBy?: string
+  collectedDate?: string
+  expiryDate?: string
+  sentForSignature?: string
+  signatureMethod?: string
+  signedDate?: string
+  verified?: boolean
+}
+
+export async function updateDocument(id: string, input: UpdateDocumentInput): Promise<void> {
+  const res = await fetch(`/api/documents/${id}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(input),
+  })
+  if (!res.ok) {
+    const body = await res.json().catch(() => null)
+    throw new Error(body?.error ?? `Failed to update document (${res.status})`)
+  }
+}
+
+export async function deleteDocument(id: string): Promise<void> {
+  const res = await fetch(`/api/documents/${id}`, { method: 'DELETE' })
+  if (res.ok) return
+  const body = await res.json().catch(() => null)
+  throw new Error(body?.error ?? `Failed to delete document (${res.status})`)
+}
+
+export async function uploadDocumentFile(id: string, file: File): Promise<void> {
+  const form = new FormData()
+  form.append('file', file)
+  const res = await fetch(`/api/documents/${id}/file`, { method: 'POST', body: form })
+  if (!res.ok) {
+    const body = await res.json().catch(() => null)
+    throw new Error(body?.error ?? `Failed to upload file (${res.status})`)
+  }
+}
+
+export function documentFileUrl(id: string): string {
+  return `/api/documents/${id}/file`
+}
+
+export interface MintedLink {
+  id: string
+  formKey: string
+  subjectId: string
+  subjectLabel: string
+  token: string
+  expiresAt: string
+  createdAt: string
+}
+
+export async function fetchMintedLinks(): Promise<MintedLink[]> {
+  const res = await fetch('/api/links')
+  if (!res.ok) throw new Error(`Failed to load recent links (${res.status})`)
+  const body = (await res.json()) as { data: MintedLink[] }
+  return body.data
+}
+
+export interface MintLinkInput {
+  formKey: string
+  subjectId: string
+  subjectLabel: string
+  expiryDays: number
+}
+
+export async function mintLink(input: MintLinkInput): Promise<MintedLink> {
+  const res = await fetch('/api/links', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(input),
+  })
+  const body = await res.json().catch(() => null)
+  if (!res.ok) throw new Error(body?.error ?? `Failed to mint link (${res.status})`)
+  return body as MintedLink
+}
+
+export type VerifiedLink =
+  | { ok: true; payload: { formKey: string; subjectId: string; subjectLabel: string; exp: number } }
+  | { ok: false; reason: 'malformed' | 'tampered' | 'expired' }
+
+export async function verifyLinkToken(token: string): Promise<VerifiedLink> {
+  const res = await fetch(`/api/links/${encodeURIComponent(token)}/verify`)
+  return (await res.json()) as VerifiedLink
 }
